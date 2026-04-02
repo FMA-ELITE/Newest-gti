@@ -1,0 +1,8 @@
+{
+  "name": "Global Trading Institute | Institutional Academic Standard",
+  "description": "An elite academic institution for global financial literacy and institutional market mastery, featuring AI-powered Forex Intelligence and a comprehensive Student Portal.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
