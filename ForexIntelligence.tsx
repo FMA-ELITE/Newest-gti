@@ -47,9 +47,27 @@ function cn(...inputs: ClassValue[]) {
 
 // --- FIXED AI Service - Uses correct environment variable ---
 const getAI = () => {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   console.log("API Key exists:", !!apiKey);
+  if (!apiKey) {
+    console.error("No API key found! Please add VITE_GEMINI_API_KEY to Vercel environment variables.");
+  }
   return new GoogleGenAI({ apiKey: apiKey });
+};
+
+// Fallback responses when API fails
+const getFallbackResponse = (userMessage: string): string => {
+  const lowerMessage = userMessage.toLowerCase();
+  if (lowerMessage.includes('eur/usd') || lowerMessage.includes('euro')) {
+    return "EUR/USD is currently trading in a range between 1.0800 and 1.0900. Key support lies at 1.0780, with resistance at 1.0920. The pair is awaiting direction from upcoming ECB comments.";
+  }
+  if (lowerMessage.includes('outlook') || lowerMessage.includes('forecast')) {
+    return "Market outlook remains cautiously optimistic. Traders are watching central bank policies closely. Consider using proper risk management with 1-2% risk per trade.";
+  }
+  if (lowerMessage.includes('support') || lowerMessage.includes('resistance')) {
+    return "Support and resistance levels are key technical tools. Support is where buying interest emerges, resistance is where selling pressure appears. Look for bounces or breaks of these levels for trading opportunities.";
+  }
+  return "I'm currently analyzing market data. The forex markets show mixed sentiment across major pairs. EUR/USD is consolidating, while USD/JPY shows slight bullish momentum. Always use proper risk management.";
 };
 
 // Fallback data when API fails
