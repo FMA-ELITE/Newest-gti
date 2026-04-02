@@ -47,12 +47,88 @@ function cn(...inputs: ClassValue[]) {
 
 // --- FIXED AI Service - Uses correct environment variable ---
 const getAI = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  console.log("API Key exists:", !!apiKey);
+ // DeepSeek API integration
+const callDeepSeek = async (messages: any[]) => {
+  const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
+  
   if (!apiKey) {
-    console.error("No API key found! Please add VITE_GEMINI_API_KEY to Vercel environment variables.");
+    console.error("No DeepSeek API key found");
+    return getDemoResponse(messages[messages.length - 1]?.text || "");
   }
-  return new GoogleGenAI({ apiKey: apiKey });
+
+  const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: messages.map(m => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.text
+      })),
+      temperature: 0.7,
+      max_tokens: 500,
+    }),
+  });
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content || "I couldn't process that request.";
+};
+
+// Replace your handleSendMessage function
+const handleSendMessage = async (customMessage?: string) => {
+  const messageToSend = customMessage || input;
+  if (!messageToSend.trim() && !selectedImage && !customMessage) return;
+  if (isThinking) return;
+
+  const userMessage: ForexMessage = {
+    role: 'user',
+    text: messageToSend || (selectedImage ? "Analyze this chart." : ""),
+    timestamp: new Date().toISOString(),
+    image: selectedImage?.base64,
+  };
+
+  setMessages(prev => [...prev, userMessage]);
+  if (!customMessage) setInput('');
+  setSelectedImage(null);
+  setIsThinking(true);
+
+  try {
+    const reply = await callDeepSeek([...messages, userMessage]);
+    
+    const modelMessage: ForexMessage = {
+      role: 'model',
+      text: reply,
+      timestamp: new Date().toISOString(),
+    };
+    
+    setMessages(prev => [...prev, modelMessage]);
+  } catch (error) {
+    console.error("DeepSeek error:", error);
+    setMessages(prev => [...prev, { 
+      role: 'model', 
+      text: getDemoResponse(messageToSend),
+      timestamp: new Date().toISOString() 
+    }]);
+  } finally {
+    setIsThinking(false);
+  }
+};
+
+const getDemoResponse = (userMessage: string): string => {
+  const msg = userMessage.toLowerCase();
+  
+  if (msg.includes('eur/usd') || msg.includes('euro')) {
+    return "**EUR/USD Analysis**\n\nCurrent sentiment: Neutral with bullish bias.\n\n- Support: 1.0780, 1.0720\n- Resistance: 1.0920, 1.0980\n\n*The pair is awaiting direction from upcoming ECB comments.*";
+  }
+  
+  if (msg.includes('outlook') || msg.includes('forecast')) {
+    return "**Market Outlook**\n\n- Short-term: Cautiously bullish on USD\n- Medium-term: Range-bound until central bank clarity\n- Key risks: Inflation data, geopolitical tensions";
+  }
+  
+  return "**Forex Market Summary**\n\nMajor pairs are consolidating ahead of key economic releases. USD remains supported by higher yields.\n\n*Always use proper risk management. This is for educational purposes only.*";
 };
 
 // Fallback responses when API fails
